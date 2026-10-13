@@ -23,7 +23,7 @@ services:
      - key: SSO_ENABLED
        value: "true"
      - key: SSO_ONLY
-       value: "false"
+       value: "true"
      - key: SSO_AUTHORITY
        value: "https://auth.jyrac.stki.org"
      - key: SSO_CLIENT_ID
