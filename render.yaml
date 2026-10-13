@@ -1,0 +1,36 @@
+services:
+ - type: web
+   name: vaultwarden
+   runtime: docker
+   dockerfilePath: ./Dockerfile
+   plan: free
+   autoDeploy: false
+   envVars:
+     - key: DOMAIN
+       value: "https://vaultwarden.jyrac.stki.org"
+     - key: ROCKET_PORT
+       value: "10000"
+     - key: DATABASE_MAX_CONNS
+       value: "3"
+     - key: SIGNUPS_ALLOWED
+       value: "false"
+     - key: INVITATIONS_ALLOWED
+       value: "true"
+     - key: ORG_CREATION_USERS
+       value: "jyrac.vaultwarden@render.stki.org"
+     - key: ORG_GROUPS_ENABLED
+       value: "true"
+     - key: SSO_ENABLED
+       value: "true"
+     - key: SSO_ONLY
+       value: "false"
+     - key: SSO_AUTHORITY
+       value: "https://auth.jyrac.stki.org"
+     - key: SSO_CLIENT_ID
+       value: "288f481bd9ee4ab6d1c6"
+     - key: SSO_SCOPES
+       value: "openid profile email offline_access"
+     - key: SSO_PKCE
+       value: "true"
+     - key: SSO_SIGNUPS_MATCH_EMAIL
+       value: "true"
