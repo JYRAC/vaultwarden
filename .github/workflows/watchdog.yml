@@ -1,0 +1,57 @@
+name: vaultwarden watchdog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check health
+        id: check
+        run: |
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            https://vaultwarden.jyrac.stki.org/alive) || CODE="000"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger redeploy if unhealthy
+        if: steps.check.outputs.code == '503' || steps.check.outputs.code == '000'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_WORKFLOW: deploy-secrets.yml
+        run: |
+          CODE="${{ steps.check.outputs.code }}"
+          API="https://api.github.com/repos/JYRAC/vaultwarden/actions/workflows/${DEPLOY_WORKFLOW}"
+
+          LAST=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "${API}/runs?per_page=1" \
+            | jq -r '.workflow_runs[0].created_at // empty')
+
+          AGE=999999
+          if [ -n "$LAST" ]; then
+            AGE=$(( $(date +%s) - $(date -d "$LAST" +%s) ))
+          fi
+
+          if [ "$AGE" -lt 900 ]; then
+            echo "::error::vaultwarden returned HTTP $CODE, but the last deploy ran ${AGE}s ago (<900s). Skipping redeploy to avoid a deploy storm."
+            exit 1
+          fi
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "${API}/dispatches" \
+            -d '{"ref":"main"}') || STATUS="000"
+
+          if [ "$STATUS" != "204" ]; then
+            echo "::error::vaultwarden returned HTTP $CODE and the redeploy dispatch FAILED (HTTP $STATUS). Check the workflow file name (${DEPLOY_WORKFLOW})."
+            exit 1
+          fi
+
+          echo "::error::vaultwarden returned HTTP $CODE - triggered redeploy, please check why it went down"
+          exit 1
