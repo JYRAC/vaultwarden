@@ -13,7 +13,7 @@ services:
      - key: DATABASE_MAX_CONNS
        value: "3"
      - key: SIGNUPS_ALLOWED
-       value: "false"
+       value: "true"
      - key: INVITATIONS_ALLOWED
        value: "true"
      - key: ORG_CREATION_USERS
