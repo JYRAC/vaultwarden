@@ -38,3 +38,5 @@ services:
        value: "true"
      - key: LOG_LEVEL
        value: "info"
+     - key: IP_HEADER
+       value: "CF-Connecting-IP"
