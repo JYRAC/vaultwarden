@@ -34,3 +34,7 @@ services:
        value: "true"
      - key: SSO_SIGNUPS_MATCH_EMAIL
        value: "true"
+     - key: EXTENDED_LOGGING
+       value: "true"
+     - key: LOG_LEVEL
+       value: "info"
