@@ -1,4 +1,4 @@
-FROM vaultwarden/server:1.37.4
+FROM vaultwarden/server:1.37.5
 
 ARG BAO_VERSION=2.7.0
 RUN curl -fsSL -o /tmp/bao.tar.gz \
