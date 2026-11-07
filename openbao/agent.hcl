@@ -23,7 +23,18 @@ env_template "SSO_CLIENT_SECRET" {
   contents = "{{ with secret \"kv/data/secrets/vaultwarden/config\" }}{{ .Data.data.sso_client_secret }}{{ end }}"
 }
 
+# ゲート専用の、読み取りだけのDB資格情報（Vaultwarden本体のロールとは別）。
+# GATE_ で始まる環境変数は、ゲートが Vaultwarden の子プロセスには渡さない。
+env_template "GATE_DB_USER" {
+  contents = "{{ with secret \"database/creds/gate-reader\" }}{{ .Data.username }}.kuajmlczxracqobxkzee{{ end }}"
+}
+
+env_template "GATE_DB_PASSWORD" {
+  contents = "{{ with secret \"database/creds/gate-reader\" }}{{ .Data.password }}{{ end }}"
+}
+
+# Vaultwarden本体は、ゲートが起動する（Dockerfile の GATE_CHILD_CMD）。
 exec {
-  command                   = ["/vaultwarden"]
+  command                   = ["/app/gate"]
   restart_on_secret_changes = "always"
 }
