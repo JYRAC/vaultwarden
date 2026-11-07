@@ -17,7 +17,7 @@ RUN go mod init gate && \
 # ※ FROM の版は、手元の最新に合わせること（これは、送ってもらった zip の版）
 FROM vaultwarden/server:1.37.5
 
-ARG BAO_VERSION=2.7.0
+ARG BAO_VERSION=2.7.2
 RUN curl -fsSL -o /tmp/bao.tar.gz \
       "https://github.com/openbao/openbao/releases/download/v${BAO_VERSION}/openbao_${BAO_VERSION}_linux_amd64.tar.gz" && \
     mkdir -p /tmp/bao-extract && \
