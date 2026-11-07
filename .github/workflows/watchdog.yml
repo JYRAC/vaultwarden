@@ -15,7 +15,7 @@ jobs:
         id: check
         run: |
           CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-            https://vaultwarden.jyrac.stki.org/alive) || CODE="000"
+            https://vaultwarden.jyrac.stki.org/gate/healthz) || CODE="000"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
       - name: Trigger redeploy if unhealthy
