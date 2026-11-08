@@ -2,7 +2,7 @@
 #   gate.go（ゲートと監視）、policy.go（許可リストの読み込み）、rules.go（公開読み取りの例外。
 #   Vaultwarden では使わないが、同じソースを共有している）を、Goモジュールとしてビルドする。
 #   go.sum は、ビルド時に pgx の版から作る（Goのチェックサムデータベースで改ざんを検証）。
-FROM golang:1.25-alpine AS gate-build
+FROM golang:1.27-alpine AS gate-build
 # 依存の pgx が、より新しいGoを求める場合に、必要な版を自動で取得する
 ENV GOTOOLCHAIN=auto \
     CGO_ENABLED=0
