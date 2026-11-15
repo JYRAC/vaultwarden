@@ -63,3 +63,7 @@ services:
        value: "vaultwarden"
      - key: OPENBAO_NB_ADDR
        value: "https://100.125.124.43:8210"
+     # Casdoor の内部口 A（固定ピアの NetBird の IP:8443）。サーバー側の SSO 通信（発見文書、トークン、ユーザー情報、鍵）が、ここを通る。
+     # 空だと公開側につなぐ（C6 の前の、一時的な代替）。SSO_AUTHORITY は、公開のまま変えない。
+     - key: CASDOOR_NB_ADDR
+       value: "100.125.23.8:8443"

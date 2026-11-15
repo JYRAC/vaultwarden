@@ -23,6 +23,28 @@ RUN apk add --no-cache curl && \
     mkdir -p /tmp/netbird-bin && \
     tar -xzf /tmp/netbird.tar.gz -C /tmp/netbird-bin netbird
 
+# Casdoor（SSO）への、NetBird 経由の TCP 中継をビルド（標準ライブラリのみ）
+FROM golang:1.27-alpine AS nbtcp-build
+ENV GOTOOLCHAIN=auto \
+    CGO_ENABLED=0
+WORKDIR /src
+COPY nbtcp.go ./
+RUN go mod init nbtcp && \
+    go build -trimpath -ldflags="-s -w" -o /out/nbtcp .
+
+# Vaultwarden が、Casdoor の内部口の証明書を検証するための、ルート証明書だけを取り出す。
+#   openbao/ca.crt は、複数枚のバンドル（旧い自己署名の証明書 + ルート）。CA（CA:TRUE）のものだけを使う。
+#   ルートは、名前制約つき（netbird.cloud と jyrac.stki.org のみ）なので、他の名前には使えない。
+FROM alpine:3.24 AS trust-root
+RUN apk add --no-cache openssl
+COPY openbao/ca.crt /tmp/ca.crt
+RUN mkdir -p /out /tmp/split && cd /tmp/split && \
+    tr -d '\r' < /tmp/ca.crt | awk '/BEGIN CERTIFICATE/{n++} {print > ("c" n ".pem")}' && \
+    for f in c*.pem; do \
+      if openssl x509 -in "$f" -noout -ext basicConstraints | grep -q 'CA:TRUE'; then cp "$f" "/out/jyrac-root-$f.crt"; fi; \
+    done && \
+    test -n "$(ls /out)" && ls /out
+
 # ※ FROM の版は、手元の最新に合わせること（これは、送ってもらった zip の版）
 FROM vaultwarden/server:1.37.5
 
@@ -37,9 +59,14 @@ RUN curl -fsSL -o /tmp/bao.tar.gz \
 
 COPY --from=netbird-download /tmp/netbird-bin/netbird /usr/local/bin/netbird
 COPY --from=gate-build /out/gate /app/gate
+COPY --from=nbtcp-build /out/nbtcp /usr/local/bin/nbtcp
+# ルート証明書を、システムの信頼する証明書に入れる（Vaultwarden の SSO の通信が、Casdoor の証明書を検証できるように）。
+# 名前制約つきのルートなので、netbird.cloud と jyrac.stki.org 以外の名前の証明書は、信頼されない。
+COPY --from=trust-root /out/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates
 
 # NetBird の実行確認もここで行う。
-RUN chmod +x /usr/local/bin/netbird /app/gate && \
+RUN chmod +x /usr/local/bin/netbird /app/gate /usr/local/bin/nbtcp && \
     /usr/local/bin/netbird version
 
 # ゲートが起動するアプリ（Vaultwarden）。秘密ではないので、コードと一緒に版管理する。

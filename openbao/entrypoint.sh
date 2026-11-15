@@ -35,8 +35,10 @@ use_netbird() {
   VIA=netbird
 }
 
+NB_OK=0
 if [ -n "$NB_ADDR" ] && [ -n "${NB_SETUP_KEY:-}" ]; then
   if /netbird-up.sh; then
+    NB_OK=1
     use_netbird
   else
     echo "NB: NetBird に接続できませんでした。公開側の OpenBao に接続します（移行中の、一時的な代替）" >&2
@@ -45,6 +47,32 @@ fi
 # キーは、もう使わない。アプリ側の環境に残さない。
 unset NB_SETUP_KEY
 [ -n "$VIA" ] || use_public
+
+# Casdoor（SSO）への、サーバー側の通信（発見文書、トークン、ユーザー情報、鍵）は、NetBird 経由で、Casdoor の内部口 A に出す。
+#   CASDOOR_NB_ADDR  内部口 A の、NetBird の IP:ポート（Casdoor の固定ピアの IP:8443。IPv4 のみ）。空なら、公開側のまま。
+# Vaultwarden は、発見文書に書かれた公開の URL（https://auth.jyrac.stki.org/...）に通信するので、URL は変えずに、
+#   1. /etc/hosts で、この名前を 127.0.0.1 に向け、
+#   2. nbtcp が、127.0.0.1:443 で受けて、NetBird の SOCKS5 経由で、内部口 A に、バイトをそのまま流す（TLS は終わらせない）。
+#   3. Vaultwarden が、Casdoor と直接 TLS で話し、名前 auth.jyrac.stki.org と、システムの信頼する証明書
+#      （ルート入り。Dockerfile で追加）で、検証する。検証は、切らない。
+# ブラウザが開く認可の URL は、公開のまま（利用者の通信は、内部口を通さない。/etc/hosts は、このコンテナの中だけ）。
+# どれかが使えなければ、何も変えずに、公開側へつなぐ（移行中の、一時的な代替。公開側を閉じたら、不要）。
+CASDOOR_HOST="${CASDOOR_HOSTNAME:-auth.jyrac.stki.org}"
+CASDOOR_VIA=public
+if [ "$NB_OK" = 1 ] && [ -n "${CASDOOR_NB_ADDR:-}" ]; then
+  nbtcp >&2 &
+  if ! nbtcp --wait-listen; then
+    echo "NB: 127.0.0.1:443 で待ち受けられませんでした。Casdoor へは、公開側でつなぎます" >&2
+  elif ! echo "127.0.0.1 $CASDOOR_HOST" >> /etc/hosts 2>/dev/null; then
+    echo "NB: /etc/hosts に書けませんでした。Casdoor へは、公開側でつなぎます" >&2
+  else
+    ( nbtcp --check >&2 || echo "NB: Casdoor の内部口に NetBird 経由で届きません。SSO のログインができません" >&2 ) &
+    CASDOOR_VIA=netbird
+  fi
+else
+  echo "NB: Casdoor へは、公開側でつなぎます（NetBird に出られないか、CASDOOR_NB_ADDR が空です）" >&2
+fi
+echo "CASDOOR_VIA=$CASDOOR_VIA host=$CASDOOR_HOST"
 
 unwrap() {
   bao unwrap -field=token "$OPENBAO_WRAPPED_TOKEN" 2>/tmp/unwrap.err
